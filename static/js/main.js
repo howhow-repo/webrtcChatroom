@@ -3,11 +3,38 @@ var btnJoin = document.querySelector('#btn-join');
 var username;
 var webSocket;
 
+var mapPeers = {};
+
+
 function webSocketOnMessage(event) {
     var parsedData = JSON.parse(event.data);
-    var message = parsedData['message'];
+    var peerUsername = parsedData['peer'];
+    var action = parsedData['action'];
 
-    console.log('message:', message)
+    if (peerUsername == username) {
+        return;
+    }
+
+    var receiver_channel_name = parsedData['message']['receiver_channel_name']
+    if (action == 'new-peer'){
+        createOffer(peerUsername, receiver_channel_name)
+
+        return;
+    }
+
+    if(action == 'new-offer'){
+        var offer = parsedData['message']['sdp'];
+        createAnswer(offer, peerUsername, receiver_channel_name);
+
+        return;
+    }
+
+    if(action == 'new-answer'){
+        var answer = parsedData['message']['sdp'];
+        var peer = mapPeers[peerUsername][0];
+        peer.setRemoteDescription(answer);
+        return;
+    }
 }
 
 btnJoin.addEventListener('click', function() {
@@ -39,10 +66,7 @@ btnJoin.addEventListener('click', function() {
     webSocket = new WebSocket(endPoint);
     webSocket.addEventListener('open', (e) => {
         console.log("Connection Opened")
-        var jsonStr = JSON.stringify({
-            'message': 'this is a test message from init websocket!'
-        });
-        webSocket.send(jsonStr);
+        sendSignal('new-peer', {})
     });
     webSocket.addEventListener('message',webSocketOnMessage);
 
@@ -53,3 +77,205 @@ btnJoin.addEventListener('click', function() {
         console.log("Error occurred")
     });
 })
+
+
+var localStream = new MediaStream();
+
+const constraints = {
+    'video': true,
+    'audio': true
+}
+
+const localVideo = document.querySelector('#local-video')
+
+const btnToggleAudio = document.querySelector('#btn-toggle-audio')
+const btnToggleVideo = document.querySelector('#btn-toggle-video')
+
+var userMedia = navigator.mediaDevices.getUserMedia(constraints)
+    .then( stream => {
+        localStream = stream;
+        localVideo.srcObject = localStream;
+        localVideo.muted = true;
+
+        var audioTrack = stream.getAudioTracks();
+        var videoTrack = stream.getVideoTracks();
+
+        audioTrack[0].enabled = true;
+        videoTrack[0].enabled = true;
+
+        btnToggleAudio.addEventListener('click',() => {
+            audioTrack[0].enabled = !audioTrack[0].enabled;
+            if(audioTrack[0].enabled){
+                btnToggleAudio.innerHTML = 'Audio Mute';
+                return;
+            }
+            btnToggleAudio.innerHTML = 'Audio Unmute';
+        })
+
+
+        btnToggleVideo.addEventListener('click',() => {
+            videoTrack[0].enabled = !videoTrack[0].enabled;
+            if(videoTrack[0].enabled){
+                btnToggleVideo.innerHTML = 'Video OFF';
+                return;
+            }
+            btnToggleVideo.innerHTML = 'Video ON';
+        })
+
+    })
+    .catch(error => {
+        console.log('Error when accessingmedia devices: ', error);
+    })
+
+function sendSignal(action, message){
+    var jsonStr = JSON.stringify({
+            'peer': username,
+            'action':action,
+            'message':message,
+    });
+    webSocket.send(jsonStr);
+}
+
+function createOffer(peerUsername, receiver_channel_name ){
+    var peer = new RTCPeerConnection(null); //TODO: This 'null' will only allow local connection.
+                                            //TODO: To use remote connection, need more research on turn server credential.
+    addLocalTracks(peer);
+    var dc = peer.createDataChannel('channel'); // dc means data channel
+    dc.addEventListener('open', () => {
+        console.log('Connection opened!: ', username);
+    })
+    dc.addEventListener('message', dcOnMessage);
+
+    var remoteVideo = createVideo(peerUsername);
+    setOnTrack(peer, remoteVideo);
+
+    mapPeers[peerUsername] = [peer, dc];
+
+    peer.addEventListener('iceconnectionstatechange', () => {
+        var iceConnectionState = peer.iceConnectionState;
+        if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected' || iceConnectionState === 'closed'){
+            delete mapPeers[peerUsername];
+            if (iceConnectionState != 'closed'){
+                peer.close();
+            }
+            removeVideo(remoteVideo)
+        }
+    });
+
+    peer.addEventListener('icecandidate', (event) => {
+        if (event.candidate){
+            console.log('new ice candidate: ',JSON.stringify(peer.localDescription));
+            return;
+        }
+        sendSignal('new-offer',{
+            'sdp': peer.localDescription,
+            'receiver_channel_name': receiver_channel_name,
+        })
+    });
+
+    peer.createOffer()
+        .then(o => peer.setLocalDescription(o))
+        .then(() => {
+            console.log('Local description set successfully.')
+        });
+}
+
+
+function createAnswer(offer, peerUsername, receiver_channel_name){
+    var peer = new RTCPeerConnection(null); //TODO: This 'null' will only allow local connection.
+                                            //TODO: To use remote connection, need more research on turn server credential.
+    addLocalTracks(peer);
+
+    var remoteVideo = createVideo(peerUsername);
+    setOnTrack(peer, remoteVideo);
+
+    peer.addEventListener('dataChannel', e => {
+        peer.dc = e.channel;
+        peer.dc = peer.createDataChannel('channel'); // dc means data channel
+        peer.dc.addEventListener('open', () => {
+            console.log('Connection opened!: ', username);
+        })
+        peer.dc.addEventListener('message', dcOnMessage);
+
+        mapPeers[peerUsername] = [peer, peer.dc];
+    })
+
+    peer.addEventListener('iceconnectionstatechange', () => {
+        var iceConnectionState = peer.iceConnectionState;
+        if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected' || iceConnectionState === 'closed'){
+            delete mapPeers[peerUsername];
+            if (iceConnectionState != 'closed'){
+                peer.close();
+            }
+            removeVideo(remoteVideo)
+        }
+    });
+
+    peer.addEventListener('icecandidate', (event) => {
+        if (event.candidate){
+            console.log('new ice candidate: ',JSON.stringify(peer.localDescription));
+            return;
+        }
+        sendSignal('new-answer',{
+            'sdp': peer.localDescription,
+            'receiver_channel_name': receiver_channel_name,
+        })
+    });
+
+    peer.setRemoteDescription(offer)
+        .then(() => {
+            console.log("Remote description set successfully for %s", peerUsername);
+            return peer.createAnswer();
+        })
+        .then(a => {
+            console.log('Answer created!');
+            peer.setLocalDescription(a);
+        })
+
+}
+
+
+function addLocalTracks(peer){
+    localStream.getTracks().forEach(track => {
+        peer.addTrack(track, localStream);
+    })
+    return;
+}
+
+var messageList = document.querySelector('message-list');
+function dcOnMessage(event){
+    var message = event.data;
+    var li = document.createElement('li');
+    li.appendChild(document.createTextNode(message));
+    messageList.appensChild(li);
+}
+
+function createVideo(peerUsername){
+    var videoContainer = document.querySelector('#video-container');
+    var remoteVideo = document.createElement('video');
+    remoteVideo.id = peerUsername + '-video';
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+
+    var videoWrapper = document.createElement('div');
+    videoContainer.appendChild(videoWrapper);
+    videoWrapper.appendChild(remoteVideo);
+    return remoteVideo;
+}
+
+
+function setOnTrack(peer, remoteVideo){
+    var remoteStream = new MediaStream();
+
+    remoteVideo.srcObject = remoteStream;
+    peer.addEventListener('track', async => {
+        remoteStream.addTrack(event.track, remoteStream);
+    })
+}
+
+
+function removeVideo(video){
+    var videoWrapper = video.parentNode;
+    videoWrapper.parentNode.removeChild(videoWrapper);
+}
+
