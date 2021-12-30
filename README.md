@@ -43,8 +43,8 @@ There are some files to create and setup for django channels to run.
 I'll try to explain the character of each file, and what they do.
 
 1. **"consumers.py"**: This is somehow works like views.py file, but for the websocket.
-Everytime when a new connection is created, a new consumer instance will be created, and be responsible to handle the receiving data from client.
-What special is these consumer instances can communicate with each other.
+Everytime when a new connection is created, a new consumer instance will be created, and be responsible to handle the receiving data from client. <br>
+What special is these consumer instances can communicate with each other. <br>
 By using channel_layer commends like `self.channel_layer.send()`or `self.channel_layer.group_send()`, one consumer can pass message to the client on another web socket connection.
 The consumer instance will be killed after the connection is closed.
 2. **"asgi.py"**: not like wsgi(Web Server Gateway Interface), web socket is an async structure.
