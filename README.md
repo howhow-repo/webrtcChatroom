@@ -53,7 +53,7 @@ So we have to use asgi(Asynchronous Server Gateway Interface) as our interface i
 3. **routing.py**: This is like urls.py file for web socket. 
 It maps different consumers (we can write many consumers for different cases) to connections that came from different url.
 
-<br><br>
+<br>
 
 #### Case study:
 In this project, our django channels are used for sdp exchanging.
@@ -66,6 +66,8 @@ In the consumers.py, we define reaction of server when "connect", "disconnect", 
 "connect" & "disconnect" are simple. 
 
 About the behavior in "receive", we'll describe it when we go throw the webrtc part.
+
+<br><br>
 
 ### [WebRTC](https://webrtc.org/): 
 #### intro:
