@@ -53,6 +53,8 @@ So we have to use asgi(Asynchronous Server Gateway Interface) as our interface i
 3. **routing.py**: This is like urls.py file for web socket. 
 It maps different consumers (we can write many consumers for different cases) to connections that came from different url.
 
+Also, there are some more setting when using channels. 
+Please follow the [territorial](https://www.youtube.com/watch?v=MBOlZMLaQ8g) step by step.
 <br>
 
 #### Case study:
