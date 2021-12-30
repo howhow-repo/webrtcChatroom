@@ -4,7 +4,7 @@ import json
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_group_name = 'test_room'
+        self.room_group_name = 'test_room' # assume that every client is in the same chat room.
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -41,7 +41,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                'type': 'send.sdp',
+                'type': 'send.sdp',  # run self.send_sdp below. this is just how this name works here. No why.
                 'receive_dict': receive_dict
             }
         )

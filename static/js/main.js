@@ -14,26 +14,40 @@ btnSendMessage.addEventListener('click', sendMsgOnClick);
 
 
 function webSocketOnMessage(event) {
+    /*
+        Actions that client side will do when receiving websocket data from django server.
+    */
+
     var parsedData = JSON.parse(event.data);
+    /*
+        in our design, websockets data send by consumer.py will be in json style.
+        with th format like: {
+            'peer': <string, the sender's username>
+            'action': <string, the sender's intense>
+            'message': <any, payload>
+        }
+    */
+
     var peerUsername = parsedData['peer'];
     var action = parsedData['action'];
 
-    if (peerUsername == username) {
+    if (peerUsername == username) { // Do nothing when the data is send by ourself.
         return;
     }
 
     var receiver_channel_name = parsedData['message']['receiver_channel_name']
+    /*
+        actually, in this period, this is save the sender's channel name.
+    */
 
     if (action == 'new-peer'){
-        createOffer(peerUsername, receiver_channel_name)
-
+        createOffer(peerUsername, receiver_channel_name);
         return;
     }
 
     if(action == 'new-offer'){
         var offer = parsedData['message']['sdp'];
         createAnswer(offer, peerUsername, receiver_channel_name);
-
         return;
     }
 
@@ -47,8 +61,8 @@ function webSocketOnMessage(event) {
 
 btnJoin.addEventListener('click', function() {
     username = usernameInput.value;
-    console.log('username:', username)
-    if(username=='') {
+    console.log('username:', username);
+    if(username=='') { // can not use empty string as username.
         return;
     }
 
@@ -67,29 +81,32 @@ btnJoin.addEventListener('click', function() {
     if(loc.protocol == "https:") {
         wsStart = 'wss://';
     }
-    var endPoint = wsStart + loc.host + loc.pathname;
+    var endPoint = wsStart + loc.host + loc.pathname; // create websockets url.
 
     console.log('endPoint:', endPoint)
 
-    webSocket = new WebSocket(endPoint);
+    webSocket = new WebSocket(endPoint); // create websockets connection with django server.
+
     webSocket.addEventListener('open', (e) => {
         console.log("Connection Opened")
-        sendSignal('new-peer', {})
+        sendSignal('new-peer', {})  // when websockets connection was created, send a message to django server consumer.
     });
+
     webSocket.addEventListener('message',webSocketOnMessage);
 
     webSocket.addEventListener('close', (e) => {
         console.log("Connection Closed")
     });
+
     webSocket.addEventListener('error', (e) => {
         console.log("Error occurred")
     });
 })
 
 
-var localStream = new MediaStream();
+// var localStream = new MediaStream();
 
-const constraints = {
+const constraints = { // UserMedia config (stream video + audio)
     'video': true,
     'audio': true
 }
@@ -100,6 +117,10 @@ const btnToggleAudio = document.querySelector('#btn-toggle-audio')
 const btnToggleVideo = document.querySelector('#btn-toggle-video')
 
 var userMedia = navigator.mediaDevices.getUserMedia(constraints)
+    /*
+        init and show client's media stream.
+        save self Audio & Video track as object.
+    */
     .then( stream => {
         localStream = stream;
         localVideo.srcObject = localStream;
@@ -260,6 +281,9 @@ function sendMsgOnClick(){
 
 
 function addLocalTracks(peer){
+    /*
+        attach self media stream to peer connection.
+    */
     localStream.getTracks().forEach(track => {
         peer.addTrack(track, localStream);
     })
@@ -276,6 +300,9 @@ function dcOnMessage(event){
 
 
 function createVideo(peerUsername){
+    /*
+        create a video window on the current html page.
+    */
     var videoContainer = document.querySelector('#video-container');
     var remoteVideo = document.createElement('video');
     remoteVideo.id = peerUsername + '-video';
@@ -290,6 +317,9 @@ function createVideo(peerUsername){
 
 
 function setOnTrack(peer, remoteVideo){
+    /*
+        attach a peer connection to the video window on html.
+    */
     var remoteStream = new MediaStream();
 
     remoteVideo.srcObject = remoteStream;
@@ -305,6 +335,10 @@ function removeVideo(video){
 }
 
 function getDataChannels(){
+    /*
+        get all current peer connection channel.
+        return a list of channel.
+    */
     var dataChannels = [];
     console.log('now mapPeers: ',mapPeers)
     for (peerUsername in mapPeers){
