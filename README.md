@@ -62,7 +62,8 @@ In this project, our django channels are used for sdp exchanging.
 sdp (Session Description Protocol) is like a personal information pack. 
 Two peers need sdp form each other for creating p2p connection.
 
-We only got one page on this site, so we keep path in urls.py & routing.py with "</empty string>".
+We only got one page on this site, so we keep path in urls.py & routing.py with "</empty string>". <br>
+Also we map our websockets end point to class ChatConsumer written in consumers.py.
 
 In the consumers.py, we define reaction of server when "connect", "disconnect", "receive".
 "connect" & "disconnect" are simple. 
@@ -71,13 +72,42 @@ About the behavior in "receive", we'll describe it when we go throw the webrtc p
 
 <br><br>
 
-### [WebRTC](https://webrtc.org/): 
+### [Web RTC](https://webrtc.org/): 
 #### intro:
-WebRTC (real-time communication) allows user create p2p connections via javascript running on browser. 
+Web RTC (real-time communication) allows user create p2p connections via javascript running on browser. 
 It supports video, voice, and generic data to be sent between peers. 
 I'll describe some terms and objects we may use later.
-1. sdp
+1. sdp: 
 2. data channel
 3. audioTrack/videoTrack
 4. RTCPeerConnection
 5. icecandidate
+
+#### steps of building connection between peers:
+Steps before peers connections builded is just like the handshake in http. <br> 
+Let say, there are 2 peers in a chatroom, as p1 & p2. <br>
+There is a third peer name p_new is intent to join this chatroom.
+
+1. p_new send a message with a key-value like message {"action":new-peer} to django server.
+2. consumer receive the message and broadcast to other related ws channels by channel layer api.
+3. After other peers (p1&p2) get the message, they do several things:
+   1. create a RTCPeerConnection waiting for p_new connecting.
+   2. Attach local track to RTCPeerConnection.
+   3. create a data channel for message chat.
+   4. create a empty video block on html for peer.
+   5. Attach RTCPeerConnection to peer video block
+   6. push p_new's connection & data channel into a mapPeers object, with p_new's username as key.
+   7. create its own sdp & save in local. (`peer.createOffer()`)
+   8. send the offer-sdp with action "new-offer" back to django server.
+4. Django server is now supposed to receiver two "new-offer" from p1 & p2. <br> Server add the channel name (of p1/p2) to the message and pass to p_new.
+5. p_new do several things after receiving message with action "new-offer":
+   1. create a RTCPeerConnection waiting for p1/p2. (So there will have 2 RTCPeerConnection in this case.)
+   2. Attach local track to RTCPeerConnection.
+   3. create a empty video block on html for peer.
+   4. Attach RTCPeerConnection to peer video block.
+   5. Add event listener "datachannel"; this is a event trigger when a data channel created by peer.
+   6. set offer-sdp receive from "new-offer"
+   7. create its own sdp & save in local. (`peer.createAnswer()`) 
+   8. send the answer-sdp with action "new-answer" back to django server.
+6. Django server is now supposed to receiver two "new-answer" from p_new. <br> Server add the channel name (of p_new) to the message and pass to p1/p2.
+7. p1/p2 both save the answer-sdp to the RTCPeerConnection, and this makes the connection open between peers.

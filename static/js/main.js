@@ -191,22 +191,28 @@ function createOffer(peerUsername, receiver_channel_name ){
         }
     });
 
+    peer.createOffer()
+        .then(o => peer.setLocalDescription(o))
+        .then(() => {
+            console.log('Local description set successfully.')
+    });
+
     peer.addEventListener('icecandidate', (event) => {
+    /*
+        An icecandidate event is sent to an RTCPeerConnection when an RTCIceCandidate has been identified
+        and added to the local peer by a call to RTCPeerConnection.setLocalDescription().
+    */
         if (event.candidate){
             // console.log('new ice candidate: ',JSON.stringify(peer.localDescription));
             return;
         }
+        console.log("send new offer ->")
         sendSignal('new-offer',{
             'sdp': peer.localDescription,
             'receiver_channel_name': receiver_channel_name,
         })
     });
 
-    peer.createOffer()
-        .then(o => peer.setLocalDescription(o))
-        .then(() => {
-            console.log('Local description set successfully.')
-        });
 }
 
 
@@ -239,26 +245,30 @@ function createAnswer(offer, peerUsername, receiver_channel_name){
         }
     });
 
+    peer.setRemoteDescription(offer)
+        .then(() => {
+            console.log("Remote description set successfully for %s", peerUsername);
+            var a = peer.createAnswer();
+            console.log('Answer created!');
+            peer.setLocalDescription(a);
+            return
+        })
+
     peer.addEventListener('icecandidate', (event) => {
+    /*
+        An icecandidate event is sent to an RTCPeerConnection when an RTCIceCandidate has been identified
+        and added to the local peer by a call to RTCPeerConnection.setLocalDescription().
+    */
         if (event.candidate){
             // console.log('new ice candidate: ',JSON.stringify(peer.localDescription));
             return;
         }
+        console.log("send new answer ->")
         sendSignal('new-answer',{
             'sdp': peer.localDescription,
             'receiver_channel_name': receiver_channel_name,
         })
     });
-
-    peer.setRemoteDescription(offer)
-        .then(() => {
-            console.log("Remote description set successfully for %s", peerUsername);
-            return peer.createAnswer();
-        })
-        .then(a => {
-            console.log('Answer created!');
-            peer.setLocalDescription(a);
-        });
 
 }
 
