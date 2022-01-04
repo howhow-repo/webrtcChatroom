@@ -47,8 +47,9 @@ Everytime when a new connection is created, a new consumer instance will be crea
 What special is these consumer instances can communicate with each other. <br>
 By using channel_layer commends like `self.channel_layer.send()`or `self.channel_layer.group_send()`, one consumer can pass message to the client on another web socket connection.
 The consumer instance will be killed after the connection is closed.
-2. **"asgi.py"**: not like wsgi(Web Server Gateway Interface), web socket is an async structure.
-So we have to use asgi(Asynchronous Server Gateway Interface) as our interface in production.
+
+2. **"asgi.py"**: To handle different protocols (like http, ws...), 
+asgi.py define which direct file (such as urls.py or routing.py) will request used.
 
 3. **routing.py**: This is like urls.py file for web socket. 
 It maps different consumers (we can write many consumers for different cases) to connections that came from different url.
@@ -111,3 +112,4 @@ There is a third peer name p_new is intent to join this chatroom.
    8. send the answer-sdp with action "new-answer" back to django server.
 6. Django server is now supposed to receiver two "new-answer" from p_new. <br> Server add the channel name (of p_new) to the message and pass to p1/p2.
 7. p1/p2 both save the answer-sdp to the RTCPeerConnection, and this makes the connection open between peers.
+![flowchart](webrtc_flowchart.png)
