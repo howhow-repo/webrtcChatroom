@@ -7,7 +7,8 @@
 ## Introduction: 
 A self study of building webrtc chatroom with streaming webcam. <br>
 https://www.youtube.com/watch?v=MBOlZMLaQ8g <br>
-Without https, this website can only work in localhost, or via ngrok and make it works on LAN.
+Without https, this website can only work in localhost, or via ngrok and make it works on LAN.<br>
+由於沒有架設於https環境，且缺乏Stun/Turn server，理論上僅可支援localhost。本站透過ngrok，勉強能夠在LAN中運行。(stream video/audio會擋非https連線)
 
 ## Installation:
 1. redis:
