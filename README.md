@@ -42,13 +42,13 @@ It doesn't mean you can't use channels with django2, it just needs more setup wo
 There are some files to create and setup for django channels to run.
 I'll try to explain the character of each file, and what they do.
 
-1. **"consumers.py"**: This is somehow works like views.py file, but for the websocket.
+1. **"consumers.py"**: Under app file. This is somehow works like views.py file, but for the websocket.
 Everytime when a new connection is created, a new consumer instance will be created, and be responsible to handle the receiving data from client. <br>
 What special is these consumer instances can communicate with each other. <br>
 By using channel_layer commends like `self.channel_layer.send()`or `self.channel_layer.group_send()`, one consumer can pass message to the client on another web socket connection.
 The consumer instance will be killed after the connection is closed.
 
-2. **"asgi.py"**: To handle different protocols (like http, ws...), 
+2. **"webrtcChatroom/asgi.py"**: Under core file. To handle different protocols (like http, ws...), 
 asgi.py define which direct file (such as urls.py or routing.py) will request used.
 
 3. **routing.py**: This is like urls.py file for web socket. 
@@ -78,16 +78,30 @@ About the behavior in "receive", we'll describe it when we go throw the webrtc p
 Web RTC (real-time communication) allows user create p2p connections via javascript running on browser. 
 It supports video, voice, and generic data to be sent between peers. 
 I'll describe some terms and objects we may use later.
-1. sdp: 
-2. data channel
-3. audioTrack/videoTrack
-4. RTCPeerConnection
-5. icecandidate
+
+1. sdp: [Session Description Protocol](https://en.wikipedia.org/wiki/Session_Description_Protocol). 
+Info of connection exchange between peers before connection success. 
+There are offer-sdp & answer-sdp. 
+[reference.](https://ithelp.ithome.com.tw/articles/10244443)
+
+2. RTCPeerConnection: An interface represents a WebRTC connection between the local computer and a remote peer. 
+It provides methods to connect to a remote peer, maintain and monitor the connection, and close the connection once it's no longer needed.
+[reference.](https://ithelp.ithome.com.tw/articles/10243217)
+
+3. data channel: Channel under peer connection. 
+A peer connection can have multiple data channel for different usage. 
+(such as message & stream at same time)[reference](https://ithelp.ithome.com.tw/articles/10246260)
+
+4. icecandidate: 
+
+
+5. audioTrack/videoTrack: 
 
 #### steps of building connection between peers:
 Steps before peers connections builded is just like the handshake in http. <br> 
 Let say, there are 2 peers in a chatroom, as p1 & p2. <br>
-There is a third peer name p_new is intent to join this chatroom.
+There is a third peer name p_new is intent to join this chatroom. <br>
+*check the source code in static/js/main.js*
 
 1. p_new send a message with a key-value like message {"action":new-peer} to django server.
 2. consumer receive the message and broadcast to other related ws channels by channel layer api.
