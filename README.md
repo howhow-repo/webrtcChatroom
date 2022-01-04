@@ -24,7 +24,7 @@ Without https, this website can only work in localhost, or via ngrok and make it
    6. `python manage.py runserver 0.0.0.0:8000`
 
 
-3. run ngrok:
+3. run [ngrok](https://ngrok.com/) and use the https links:
    1. `ngrok http 8000`
 <hr>
    
@@ -43,15 +43,15 @@ It doesn't mean you can't use channels with django2, it just needs more setup wo
 <br><br>
 
 There are some files to create and setup for django channels to run.
-I'll try to explain the character of each file, and what they do.
+I'll try to explain the character of each file, and what they do. <br>
 以下提供一些建立django channels會用到的檔案，以及他們在連線中扮演的角色。
 
 1. **"consumers.py"**: Under app file. This is somehow works like views.py file, but for the websocket.
 Everytime when a new connection is created, a new consumer instance will be created, and be responsible to handle the receiving data from client. <br>
 What special is these consumer instances can communicate with each other. <br>
 By using channel_layer commends like `self.channel_layer.send()`or `self.channel_layer.group_send()`, one consumer can pass message to the client on another web socket connection.
-The consumer instance will be killed after the connection is closed.
-consumer 是用來handle使用者回傳socket message的，類似機器人(或者類似view.py)的class。
+The consumer instance will be killed after the connection is closed. <br>
+Consumer 是用來handle使用者回傳socket message的，類似機器人(或者類似view.py)的class。
 在每次client連線建立時，會生成一個consumer的實體來服務這支連線。
 每個實體會有獨立的channel_name；或多個channel會屬於共同的channel_group。
 Server也能以channel_group或channel_name來指定或廣播需要接收訊息的連線，用來實現跨連嫌通訊。
@@ -63,7 +63,7 @@ asgi.py 定義了要如何處置以不同協定連線進來的client。
 在使用channel時，我們需要將websocket mapping到routing.py。routing.py將control 後續 request的去向。
 
 3. **routing.py**: This is like urls.py file for web socket. 
-It maps different consumers (we can write many consumers for different cases) to connections that came from different url.
+It maps different consumers (we can write many consumers for different cases) to connections that came from different url.<br>
 類似於原本django架構中的urls.py，透過client channel連進來的路徑，可以指定不同的consumer來服務該連線。
 (開發人員能夠撰寫多種consumer來應對不同的服務。)
 
@@ -75,7 +75,9 @@ Please follow the [tutorial](https://www.youtube.com/watch?v=MBOlZMLaQ8g) step b
 #### Case study:
 In this project, our django channels are used for sdp exchanging.
 sdp (Session Description Protocol) is like a personal information pack. 
-Two peers need sdp form each other for creating p2p connection.
+Two peers need sdp form each other for creating p2p connection.<br>
+此實作中，django channels作為Signaling server使用，用來幫peers交換互相的sdp。
+是其中一種較為復蓻的應用方式。
 
 We only got one page on this site, so we keep path in urls.py & routing.py with "</empty string>". <br>
 Also we map our websockets end point to class ChatConsumer written in consumers.py.
@@ -83,7 +85,8 @@ Also we map our websockets end point to class ChatConsumer written in consumers.
 In the consumers.py, we define reaction of server when "connect", "disconnect", "receive".
 "connect" & "disconnect" are simple. 
 
-About the behavior in "receive", we'll describe it when we go throw the webrtc part.
+About the behavior in "receive", we'll describe it when we go throw the webrtc part.<br>
+consumer中的receive method 較為複雜，關係到WebRTC的交握行為設計。下面才會談到。
 
 <br><br>
 
@@ -112,22 +115,25 @@ A peer connection can have multiple data channel for different usage.
 (such as message & stream at same time) <br>
 可以在一個RTCPeerConnection中開啟多個data channel，用來傳輸不同的data
 
-4. ICE (Interactive Connectivity Establishment) [reference](https://ithelp.ithome.com.tw/articles/10209725)
-
-5. Stun server: (本次實作不會用到) 在建立RTCPeerConnection的時候，
-
-6. Trun server: (本次實作不會用到)
-
-7. Signaling server: (即為本次實作的django server的作用)
-
-8. icecandidate: 
-
+4. [ICE(Interactive Connectivity Establishment): ](https://ithelp.ithome.com.tw/articles/10209725)
+是一種在NAT上打洞的技術。技術中會遇到幾個角色：
+   1. peer: 客戶端
+   2. Stun server: (本次實作不會用到) 用來回覆peer，使peer知道他目前使用的連線真實ip:port為何，使peer能夠建立自身的sdp。
+   3. Turn server: (本次實作不會用到) 當p2p連線失敗時所使用的跳板server，以bypass的方式維持連線。
+   4. Signaling server: 一個用來讓雙方peer夠交換彼此sdp的server。(即為本次實作的django server的作用)
+   
+5. icecandidate: 候選的連線方式。在peer訪問Stun server後，會有一個(或多個，NAT有時候不止一層，且種類繁多)外部的連線方式。
+再加上local ip等。以上的連線方式都是ice 的 candidate。這些candidate會被打包成sdp，透過Signaling server傳送給remote peer。
+remote peer則會從裡面嘗試連線。
 
 
 #### [steps of building connection between peers](https://ithelp.ithome.com.tw/articles/10209725):
-Steps before peers connections builded is just like the handshake in http. <br> 
+Steps before peers connections build is just like the handshake in http. <br> 
 Let say, there are 2 peers in a chatroom, as p1 & p2. <br>
 There is a third peer name p_new is intent to join this chatroom. <br>
+連線的建立類似於handshake，透過Signaling server交換彼此的sdp。
+以下的流程說明與流程圖情境如：現有p1與p2已經建立連線在一個聊天群組中，p_new為欲加入的新peer。<br>
+**本次實作中沒有架設Stun/Turn server，因此流程有過簡化。** <br>
 *check the source code in static/js/main.js*
 
 1. p_new send a message with a key-value like message {"action":new-peer} to django server.
