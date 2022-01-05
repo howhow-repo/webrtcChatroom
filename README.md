@@ -137,18 +137,27 @@ There is a third peer name p_new is intent to join this chatroom. <br>
 **本次實作中沒有架設Stun/Turn server，因此流程有過簡化。** <br>
 *check the source code in static/js/main.js*
 
-1. p_new send a message with a key-value like message {"action":new-peer} to django server.
-2. consumer receive the message and broadcast to other related ws channels by channel layer api.
+1. p_new send a message with a key-value like message {"action":new-peer} to django server. <br>
+   p_new 傳送字串{"action":"new-peer"}給django server。
+2. consumer receive the message and broadcast to other related ws channels by channel layer api. <br>
+   django server 由consumer 接收字串處理。辨識出為"new-peer"要求後，將字串綁入consumer_name後，broadcast給p1/p2。
 3. After other peers (p1&p2) get the message, they do several things:
-   1. create a RTCPeerConnection waiting for p_new connecting.
-   2. Attach local track to RTCPeerConnection.
-   3. create a data channel for message chat.
-   4. create a empty video block on html for peer.
-   5. Attach RTCPeerConnection to peer video block
-   6. push p_new's connection & data channel into a mapPeers object, with p_new's username as key.
-   7. create its own sdp & save in local. (`peer.createOffer()`)
-   8. send the offer-sdp with action "new-offer" back to django server.
-4. Django server is now supposed to receiver two "new-offer" from p1 & p2. <br> Server add the channel name (of p1/p2) to the message and pass to p_new.
+   1. create a RTCPeerConnection waiting for p_new connecting. <br>
+   p1/p2在瀏覽器中建立RTCPeerConnection。
+   2. Attach local track to RTCPeerConnection. <br>
+   p1/p2將自己的webcam畫面放入RTCPeerConnection。
+   3. create a data channel for message chat. <br>
+   在RTCPeerConnection內建立一個新的data channel給聊天室使用。
+   4. Create a empty video block on html for peer and attach RTCPeerConnection to peer video block. <br>
+   建立video block等待連線建立。
+   5. push p_new's connection & data channel into a mapPeers object, with p_new's username as key. <br>
+   將p_new相關資訊儲存起來。
+   6. create its own sdp & save in local. (`peer.createOffer()`) <br>
+   生成自己的offer sdp並儲存。
+   7. send the offer-sdp with action "new-offer" back to django server. <br>
+   將剛剛生成的offer sdp傳送給django server，指定要將訊息傳給p_new。
+4. Django server is now supposed to receiver two "new-offer" from p1 & p2. Server add the channel name (of p1/p2) to the message and pass to p_new. <br>
+   Server 收到"new-offer"後，個別加入傳送者的channel_name，再將其傳送給p_new。
 5. p_new do several things after receiving message with action "new-offer":
    1. create a RTCPeerConnection waiting for p1/p2. (So there will have 2 RTCPeerConnection in this case.)
    2. Attach local track to RTCPeerConnection.
