@@ -1,4 +1,4 @@
-# Web RTC Chatroom
+# WebRTC Chatroom (with webcam streaming)
 <hr>
 
 
@@ -159,14 +159,22 @@ There is a third peer name p_new is intent to join this chatroom. <br>
 4. Django server is now supposed to receiver two "new-offer" from p1 & p2. Server add the channel name (of p1/p2) to the message and pass to p_new. <br>
    *Server 收到"new-offer"後，個別加入傳送者的channel_name，再將其傳送給p_new。*
 5. p_new do several things after receiving message with action "new-offer":
-   1. create a RTCPeerConnection waiting for p1/p2. (So there will have 2 RTCPeerConnection in this case.)
-   2. Attach local track to RTCPeerConnection.
-   3. create a empty video block on html for peer.
-   4. Attach RTCPeerConnection to peer video block.
-   5. Add event listener "datachannel"; this is a event trigger when a data channel created by peer.
-   6. set offer-sdp receive from "new-offer"
-   7. create its own sdp & save in local. (`peer.createAnswer()`) 
-   8. send the answer-sdp with action "new-answer" back to django server.
-6. Django server is now supposed to receiver two "new-answer" from p_new. <br> Server add the channel name (of p_new) to the message and pass to p1/p2.
-7. p1/p2 both save the answer-sdp to the RTCPeerConnection, and this makes the connection open between peers.
+   1. create a RTCPeerConnection waiting for p1/p2. (So there will have 2 RTCPeerConnection in this case.)<br>
+   *p_new在瀏覽器中建立RTCPeerConnection。*
+   2. Attach local track to RTCPeerConnection.<br>
+   *p_new同樣將webcam畫面放入RTCPeerConnection。*
+   3. create a empty video block on html for peer and attach RTCPeerConnection to peer video block.<br>
+   *建立video block等待連線建立。*
+   4. Add event listener "datachannel" to peer connection; This is a event trigger when a data channel created by peer.<br>
+   *在RTCPeerConnection中加入datachannel的觸發事件，用來處理對方建立新的data channel時的回覆。*
+   5. set offer-sdp receive from "new-offer"<br>
+   *將收到的sdp存入peer connection*
+   6. create its own sdp & save in local. (`peer.createAnswer()`) <br>
+   *生成自己的answer sdp並儲存。*
+   7. send the answer-sdp with action "new-answer" back to django server.<br>
+   *將剛剛生成的answer sdp傳送給django server，指定要將訊息傳給p1/p2。*
+6. Django server is now supposed to receiver two "new-answer" from p_new. <br> Server add the channel name (of p_new) to the message and pass to p1/p2.<br>
+*Server 收到"new-answer"後，加入p_new的channel_name，再將其個別傳送給p1/p2。*
+7. p1/p2 both save the answer-sdp to the RTCPeerConnection, and this makes the connection open between peers.<br>
+*p1/p2將接收到p_new的sdp，俵將棋attach到peer connection中，系統集會開始嘗試連線。*
 ![flowchart](webrtc_flowchart_v2.png)
