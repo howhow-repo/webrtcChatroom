@@ -134,7 +134,7 @@ Let say, there are 2 peers in a chatroom, as p1 & p2. <br>
 There is a third peer name p_new is intent to join this chatroom. <br>
 *連線的建立類似於handshake，透過Signaling server交換彼此的sdp。
 以下的流程說明與流程圖情境如：現有p1與p2已經建立連線在一個聊天群組中，p_new為欲加入的新peer。<br>*
-**本次實作中沒有架設Stun/Turn server，因此流程有過簡化。** <br>
+***本次實作中沒有架設Stun/Turn server，因此流程有過簡化。*** <br><br>
 *check the source code in static/js/main.js*
 
 1. p_new send a message with a key-value like message {"action":new-peer} to django server. <br>
